@@ -93,6 +93,52 @@ tmetric-helper keep-active --check-interval 30
 
 The `keep-active` command runs continuously and monitors mouse movement. When no activity is detected for the specified timeout period (default: 5 minutes), it performs a subtle action to keep the system active. Press Ctrl+C to stop monitoring.
 
+### Process Monitoring
+
+**Check if TMetric is running:**
+```bash
+# Check once
+tmetric-helper is-running
+
+# Check for a different process
+tmetric-helper is-running --process-name "Visual Studio Code"
+```
+
+**Monitor for TMetric and notify when it's running:**
+```bash
+# Continuously monitor (checks every 5 seconds)
+tmetric-helper watch
+
+# Check once and exit
+tmetric-helper watch --run-once
+
+# Custom check interval (every 10 seconds)
+tmetric-helper watch --check-interval 10
+
+# Monitor a different process
+tmetric-helper watch --process-name "Chrome"
+```
+
+**Automatically keep system active when TMetric is running:**
+```bash
+# Default: Move mouse after 5 minutes of inactivity (only when TMetric is running)
+tmetric-helper auto-keep-active
+
+# Custom inactivity timeout (3 minutes)
+tmetric-helper auto-keep-active --inactivity-timeout 180
+
+# Different action types
+tmetric-helper auto-keep-active --action jiggle  # Wiggle mouse
+tmetric-helper auto-keep-active --action press   # Press shift key
+
+# Custom intervals
+tmetric-helper auto-keep-active --check-interval 15 --process-check-interval 60
+```
+
+The `auto-keep-active` command combines process monitoring with activity simulation. It only performs mouse movements when:
+1. TMetric is detected running, AND
+2. No user activity for the specified timeout period
+
 ### Advanced: Command Sequences
 
 Execute multiple commands in sequence:
@@ -127,14 +173,84 @@ uv run ruff check --fix .
 
 ## Requirements
 
-- Python 3.10 or higher
+- Python 3.14 or higher
 - macOS (uses PyAutoGUI which supports macOS, Windows, and Linux)
+
+## Running in Background & Auto-Start on macOS
+
+### Option 1: LaunchAgent (Recommended - Auto-start on login)
+
+Install as a system service that runs automatically on login:
+
+```bash
+# First, build the executable
+uv run python build.py
+
+# Install as LaunchAgent
+./scripts/install-launchd.sh
+
+# View status
+launchctl list | grep tmetric-helper
+
+# View logs
+tail -f /tmp/tmetric-helper.log
+
+# Restart the service
+launchctl kickstart -k gui/$(id -u)/com.bukitoka.tmetric-helper
+
+# Uninstall
+./scripts/uninstall-launchd.sh
+```
+
+**What it does:**
+- ✅ Starts automatically when you log in
+- ✅ Runs in the background (no terminal window)
+- ✅ Restarts automatically if it crashes
+- ✅ Monitors for TMetric every 30 seconds
+- ✅ Moves mouse after 5 minutes of inactivity (only when TMetric is running)
+- 📝 Logs output to `/tmp/tmetric-helper.log`
+
+### Option 2: Background Process (Temporary)
+
+Run in the background without installing as a service:
+
+```bash
+# First, build the executable
+uv run python build.py
+
+# Run in background
+./scripts/run-background.sh
+
+# View logs
+tail -f tmetric-helper.log
+
+# Stop the process
+pkill -f 'tmetric-helper watch'
+```
+
+### Option 3: Manual Background Execution
+
+```bash
+# Using nohup
+nohup ./dist/tmetric-helper auto-keep-active > tmetric-helper.log 2>&1 &
+
+# Or using uv
+nohup uv run tmetric-helper auto-keep-active > tmetric-helper.log 2>&1 &
+
+# Check if running
+ps aux | grep tmetric-helper
+
+# Stop
+pkill -f 'tmetric-helper'
+```
 
 ## Dependencies
 
 - `pyautogui` - Cross-platform GUI automation
 - `click` - Command-line interface creation kit
+- `psutil` - Process and system monitoring
 - `ruff` - Python linter and formatter (dev dependency)
+- `pyinstaller` - Create standalone executables (dev dependency)
 
 ## Safety Note
 

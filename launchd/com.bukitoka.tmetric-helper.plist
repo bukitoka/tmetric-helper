@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.bukitoka.tmetric-helper</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Volumes/Devs/tmetric-helper/dist/tmetric-helper</string>
+        <string>auto-keep-active</string>
+        <string>--inactivity-timeout</string>
+        <string>300</string>
+        <string>--check-interval</string>
+        <string>10</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/tmetric-helper.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/tmp/tmetric-helper.error.log</string>
+
+    <key>WorkingDirectory</key>
+    <string>/Volumes/Devs/tmetric-helper</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+</dict>
+</plist>

@@ -4,6 +4,7 @@ import time
 from datetime import datetime
 
 import click
+import psutil
 import pyautogui
 
 # Configure PyAutoGUI
@@ -233,6 +234,270 @@ def keep_active(inactivity_timeout, action, check_interval):
         click.echo("\n" + "-" * 60)
         click.echo(f"✓ Monitoring stopped. Total actions performed: {action_count}")
         click.echo("=" * 60)
+
+
+@cli.command()
+@click.option(
+    "--process-name",
+    "-p",
+    default="TMetric",
+    help="Process name to monitor (default: TMetric)",
+)
+@click.option(
+    "--check-interval",
+    "-i",
+    default=5,
+    help="Seconds between process checks (default: 5)",
+)
+@click.option(
+    "--run-once",
+    "-o",
+    is_flag=True,
+    help="Check once and exit, instead of continuously monitoring",
+)
+def watch(process_name, check_interval, run_once):
+    """Monitor for a process.
+
+    This command watches for a specific process (default: TMetric).
+    For automatic mouse movement when TMetric is running, use 'auto-keep-active'.
+
+    Examples:
+        # Monitor and notify when TMetric is running
+        tmetric-helper watch
+
+        # Check once if TMetric is running
+        tmetric-helper watch --run-once
+    """
+    click.echo("=" * 60)
+    click.echo("TMetric Helper - Process Monitor")
+    click.echo("=" * 60)
+    click.echo(f"Watching for process: {process_name}")
+    click.echo(f"Check interval: {check_interval}s")
+    if run_once:
+        click.echo("Mode: Single check")
+    else:
+        click.echo("Mode: Continuous monitoring")
+        click.echo("\nPress Ctrl+C to stop.")
+    click.echo("-" * 60)
+
+    def is_process_running(name):
+        """Check if a process with the given name is running."""
+        name_lower = name.lower()
+        for proc in psutil.process_iter(["name"]):
+            try:
+                proc_name = proc.info["name"]
+                if proc_name and name_lower in proc_name.lower():
+                    return True
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                pass
+        return False
+
+    check_count = 0
+
+    try:
+        while True:
+            check_count += 1
+            timestamp = datetime.now().strftime("%H:%M:%S")
+            is_running = is_process_running(process_name)
+
+            if is_running:
+                click.echo(f"[{timestamp}] ✓ {process_name} is running")
+                if run_once:
+                    break
+            else:
+                click.echo(f"[{timestamp}] ⨯ {process_name} is not running (check #{check_count})")
+                if run_once:
+                    click.echo(f"\n{process_name} is not currently running.")
+                    break
+
+            if not run_once:
+                time.sleep(check_interval)
+
+    except KeyboardInterrupt:
+        click.echo("\n" + "-" * 60)
+        click.echo(f"✓ Monitoring stopped after {check_count} checks")
+        click.echo("=" * 60)
+
+
+@cli.command()
+@click.option(
+    "--process-name",
+    "-p",
+    default="TMetric",
+    help="Process name to monitor (default: TMetric)",
+)
+@click.option(
+    "--inactivity-timeout",
+    "-t",
+    default=300,
+    help="Seconds of inactivity before action (default: 300 = 5 minutes)",
+)
+@click.option(
+    "--action",
+    "-a",
+    default="move",
+    type=click.Choice(["move", "jiggle", "press"]),
+    help="Action to perform: move (small movement), jiggle (wiggle mouse), press (shift key)",
+)
+@click.option(
+    "--check-interval",
+    "-i",
+    default=10,
+    help="Seconds between activity checks (default: 10)",
+)
+@click.option(
+    "--process-check-interval",
+    default=30,
+    help="Seconds between process checks (default: 30)",
+)
+def auto_keep_active(
+    process_name, inactivity_timeout, action, check_interval, process_check_interval
+):
+    """Automatically keep system active when TMetric is running.
+
+    This command combines process monitoring with keep-alive functionality.
+    It monitors for TMetric and only performs mouse movements when:
+    1. TMetric is running, AND
+    2. No user activity detected for the specified timeout
+
+    Press Ctrl+C to stop monitoring.
+    """
+    click.echo("=" * 60)
+    click.echo("TMetric Helper - Auto Keep Active")
+    click.echo("=" * 60)
+    click.echo(f"Target process: {process_name}")
+    click.echo(f"Inactivity timeout: {inactivity_timeout}s ({inactivity_timeout // 60} minutes)")
+    click.echo(f"Action on inactivity: {action}")
+    click.echo(f"Activity check interval: {check_interval}s")
+    click.echo(f"Process check interval: {process_check_interval}s")
+    click.echo("\nMonitoring started. Press Ctrl+C to stop.")
+    click.echo("Move mouse to a corner to trigger fail-safe abort.")
+    click.echo("-" * 60)
+
+    def is_process_running(name):
+        """Check if a process with the given name is running."""
+        name_lower = name.lower()
+        for proc in psutil.process_iter(["name"]):
+            try:
+                proc_name = proc.info["name"]
+                if proc_name and name_lower in proc_name.lower():
+                    return True
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                pass
+        return False
+
+    last_position = pyautogui.position()
+    last_activity_time = time.time()
+    last_process_check = time.time()
+    action_count = 0
+    tmetric_running = False
+
+    try:
+        while True:
+            current_time = time.time()
+
+            # Check if TMetric is running (periodically)
+            if current_time - last_process_check >= process_check_interval:
+                tmetric_running = is_process_running(process_name)
+                timestamp = datetime.now().strftime("%H:%M:%S")
+                if tmetric_running:
+                    click.echo(f"[{timestamp}] ✓ {process_name} is running - monitoring active")
+                else:
+                    click.echo(f"[{timestamp}] ⨯ {process_name} not running - skipping monitoring")
+                last_process_check = current_time
+
+            # Only monitor activity if TMetric is running
+            if tmetric_running:
+                time.sleep(check_interval)
+                current_position = pyautogui.position()
+                current_time = time.time()
+
+                # Check if mouse has moved
+                if current_position != last_position:
+                    last_position = current_position
+                    last_activity_time = current_time
+                    inactive_duration = 0
+                else:
+                    inactive_duration = current_time - last_activity_time
+
+                # Display status
+                timestamp = datetime.now().strftime("%H:%M:%S")
+                if inactive_duration >= inactivity_timeout:
+                    click.echo(
+                        f"[{timestamp}] ⚠️  INACTIVE for {int(inactive_duration)}s - "
+                        f"Performing {action}..."
+                    )
+
+                    # Perform the chosen action
+                    if action == "move":
+                        original_pos = pyautogui.position()
+                        pyautogui.moveRel(1, 0, duration=0.1)
+                        pyautogui.moveTo(original_pos.x, original_pos.y, duration=0.1)
+
+                    elif action == "jiggle":
+                        original_pos = pyautogui.position()
+                        pyautogui.moveRel(2, 0, duration=0.1)
+                        pyautogui.moveRel(0, 2, duration=0.1)
+                        pyautogui.moveRel(-2, 0, duration=0.1)
+                        pyautogui.moveRel(0, -2, duration=0.1)
+                        pyautogui.moveTo(original_pos.x, original_pos.y, duration=0.1)
+
+                    elif action == "press":
+                        pyautogui.press("shift")
+
+                    action_count += 1
+                    last_activity_time = current_time
+                    last_position = pyautogui.position()
+
+                    click.echo(f"[{timestamp}] ✓ Action completed (total: {action_count})")
+                else:
+                    remaining = int(inactivity_timeout - inactive_duration)
+                    click.echo(
+                        f"[{timestamp}] Active - Pos: ({current_position.x}, {current_position.y}) "
+                        f"- Timeout in {remaining}s"
+                    )
+            else:
+                # TMetric not running, just wait
+                time.sleep(process_check_interval)
+
+    except KeyboardInterrupt:
+        click.echo("\n" + "-" * 60)
+        click.echo(f"✓ Monitoring stopped. Total actions performed: {action_count}")
+        click.echo("=" * 60)
+
+
+@cli.command()
+@click.option(
+    "--process-name",
+    "-p",
+    default="TMetric",
+    help="Process name to check (default: TMetric)",
+)
+def is_running(process_name):
+    """Check if a process is currently running.
+
+    Returns exit code 0 if running, 1 if not running.
+    Useful for scripting and automation.
+    """
+    name_lower = process_name.lower()
+    running_processes = []
+
+    for proc in psutil.process_iter(["pid", "name"]):
+        try:
+            proc_name = proc.info["name"]
+            if proc_name and name_lower in proc_name.lower():
+                running_processes.append((proc.info["pid"], proc_name))
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            pass
+
+    if running_processes:
+        click.echo(f"✓ {process_name} is running:")
+        for pid, name in running_processes:
+            click.echo(f"  PID {pid}: {name}")
+        exit(0)
+    else:
+        click.echo(f"⨯ {process_name} is not running")
+        exit(1)
 
 
 if __name__ == "__main__":

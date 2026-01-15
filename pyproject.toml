@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "A Python CLI tool for automating mouse movements and keyboard typing"
 readme = "README.md"
 requires-python = ">=3.14"
-dependencies = ["pyautogui>=0.9.54", "click>=8.1.7"]
+dependencies = ["pyautogui>=0.9.54", "click>=8.1.7", "psutil>=6.1.0"]
 
 [project.scripts]
 tmetric-helper = "tmetric_helper.cli:cli"
