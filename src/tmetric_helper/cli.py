@@ -1,5 +1,6 @@
 """CLI module for TMetric Helper."""
 
+import subprocess
 import time
 from datetime import datetime
 
@@ -9,6 +10,35 @@ import pyautogui
 
 # Configure PyAutoGUI
 pyautogui.FAILSAFE = True  # Move mouse to corner to abort
+
+
+def get_system_idle_time():
+    """Get the system idle time in seconds (macOS).
+
+    Returns the time in seconds since the last user input (mouse or keyboard).
+    Returns 0 if unable to determine idle time.
+    """
+    try:
+        # Use ioreg to get system idle time on macOS
+        result = subprocess.run(
+            ["ioreg", "-c", "IOHIDSystem"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        # Parse the output to find HIDIdleTime
+        for line in result.stdout.split("\n"):
+            if "HIDIdleTime" in line:
+                # Extract the nanoseconds value
+                idle_ns = int(line.split("=")[1].strip())
+                # Convert nanoseconds to seconds
+                return idle_ns / 1_000_000_000
+
+        return 0
+    except (subprocess.CalledProcessError, ValueError, IndexError):
+        # Fallback to 0 if unable to get idle time
+        return 0
 
 
 @click.group()
@@ -156,8 +186,8 @@ def sequence(commands, delay):
 def keep_active(inactivity_timeout, action, check_interval):
     """Monitor for inactivity and perform actions to keep system active.
 
-    This command runs continuously and monitors mouse position. If no mouse
-    movement is detected for the specified timeout period, it will perform
+    This command runs continuously and monitors both mouse and keyboard activity.
+    If no activity is detected for the specified timeout period, it will perform
     an action to simulate activity.
 
     Press Ctrl+C to stop monitoring.
@@ -168,33 +198,25 @@ def keep_active(inactivity_timeout, action, check_interval):
     click.echo(f"Inactivity timeout: {inactivity_timeout}s ({inactivity_timeout // 60} minutes)")
     click.echo(f"Action on inactivity: {action}")
     click.echo(f"Check interval: {check_interval}s")
+    click.echo("Monitoring: Mouse movement AND keyboard activity")
     click.echo("\nMonitoring started. Press Ctrl+C to stop.")
     click.echo("Move mouse to a corner to trigger fail-safe abort.")
     click.echo("-" * 60)
 
-    last_position = pyautogui.position()
-    last_activity_time = time.time()
     action_count = 0
 
     try:
         while True:
             time.sleep(check_interval)
-            current_position = pyautogui.position()
-            current_time = time.time()
 
-            # Check if mouse has moved
-            if current_position != last_position:
-                last_position = current_position
-                last_activity_time = current_time
-                inactive_duration = 0
-            else:
-                inactive_duration = current_time - last_activity_time
+            # Get system idle time (includes both mouse and keyboard activity)
+            idle_time = get_system_idle_time()
 
             # Display status
             timestamp = datetime.now().strftime("%H:%M:%S")
-            if inactive_duration >= inactivity_timeout:
+            if idle_time >= inactivity_timeout:
                 click.echo(
-                    f"[{timestamp}] ⚠️  INACTIVE for {int(inactive_duration)}s - Performing {action}..."
+                    f"[{timestamp}] ⚠️  INACTIVE for {int(idle_time)}s - Performing {action}..."
                 )
 
                 # Perform the chosen action
@@ -218,16 +240,15 @@ def keep_active(inactivity_timeout, action, check_interval):
                     pyautogui.press("shift")
 
                 action_count += 1
-                last_activity_time = current_time
-                last_position = pyautogui.position()
 
                 click.echo(f"[{timestamp}] ✓ Action completed (total actions: {action_count})")
 
             else:
-                remaining = int(inactivity_timeout - inactive_duration)
+                remaining = int(inactivity_timeout - idle_time)
+                mouse_pos = pyautogui.position()
                 click.echo(
-                    f"[{timestamp}] Active - Position: ({current_position.x}, {current_position.y}) "
-                    f"- Next check in {check_interval}s (timeout in {remaining}s)"
+                    f"[{timestamp}] Active - Idle: {int(idle_time)}s - "
+                    f"Mouse: ({mouse_pos.x}, {mouse_pos.y}) - Timeout in {remaining}s"
                 )
 
     except KeyboardInterrupt:
@@ -370,6 +391,7 @@ def auto_keep_active(
     click.echo(f"Action on inactivity: {action}")
     click.echo(f"Activity check interval: {check_interval}s")
     click.echo(f"Process check interval: {process_check_interval}s")
+    click.echo("Monitoring: Mouse movement AND keyboard activity")
     click.echo("\nMonitoring started. Press Ctrl+C to stop.")
     click.echo("Move mouse to a corner to trigger fail-safe abort.")
     click.echo("-" * 60)
@@ -386,8 +408,6 @@ def auto_keep_active(
                 pass
         return False
 
-    last_position = pyautogui.position()
-    last_activity_time = time.time()
     last_process_check = time.time()
     action_count = 0
     tmetric_running = False
@@ -409,23 +429,16 @@ def auto_keep_active(
             # Only monitor activity if TMetric is running
             if tmetric_running:
                 time.sleep(check_interval)
-                current_position = pyautogui.position()
                 current_time = time.time()
 
-                # Check if mouse has moved
-                if current_position != last_position:
-                    last_position = current_position
-                    last_activity_time = current_time
-                    inactive_duration = 0
-                else:
-                    inactive_duration = current_time - last_activity_time
+                # Get system idle time (includes both mouse and keyboard activity)
+                idle_time = get_system_idle_time()
 
                 # Display status
                 timestamp = datetime.now().strftime("%H:%M:%S")
-                if inactive_duration >= inactivity_timeout:
+                if idle_time >= inactivity_timeout:
                     click.echo(
-                        f"[{timestamp}] ⚠️  INACTIVE for {int(inactive_duration)}s - "
-                        f"Performing {action}..."
+                        f"[{timestamp}] ⚠️  INACTIVE for {int(idle_time)}s - Performing {action}..."
                     )
 
                     # Perform the chosen action
@@ -446,15 +459,14 @@ def auto_keep_active(
                         pyautogui.press("shift")
 
                     action_count += 1
-                    last_activity_time = current_time
-                    last_position = pyautogui.position()
 
                     click.echo(f"[{timestamp}] ✓ Action completed (total: {action_count})")
                 else:
-                    remaining = int(inactivity_timeout - inactive_duration)
+                    remaining = int(inactivity_timeout - idle_time)
+                    mouse_pos = pyautogui.position()
                     click.echo(
-                        f"[{timestamp}] Active - Pos: ({current_position.x}, {current_position.y}) "
-                        f"- Timeout in {remaining}s"
+                        f"[{timestamp}] Active - Idle: {int(idle_time)}s - "
+                        f"Mouse: ({mouse_pos.x}, {mouse_pos.y}) - Timeout in {remaining}s"
                     )
             else:
                 # TMetric not running, just wait

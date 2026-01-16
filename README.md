@@ -91,7 +91,7 @@ tmetric-helper keep-active --action press   # Press shift key
 tmetric-helper keep-active --check-interval 30
 ```
 
-The `keep-active` command runs continuously and monitors mouse movement. When no activity is detected for the specified timeout period (default: 5 minutes), it performs a subtle action to keep the system active. Press Ctrl+C to stop monitoring.
+The `keep-active` command runs continuously and monitors both mouse and keyboard activity. When no activity is detected for the specified timeout period (default: 5 minutes), it performs a subtle action to keep the system active. Press Ctrl+C to stop monitoring.
 
 ### Process Monitoring
 
