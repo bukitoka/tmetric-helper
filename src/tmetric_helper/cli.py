@@ -261,8 +261,8 @@ def keep_active(inactivity_timeout, action, check_interval):
 @click.option(
     "--process-name",
     "-p",
-    default="TMetric",
-    help="Process name to monitor (default: TMetric)",
+    default="TMetric Desktop",
+    help="Process name to monitor (default: TMetric Desktop)",
 )
 @click.option(
     "--check-interval",
@@ -279,14 +279,14 @@ def keep_active(inactivity_timeout, action, check_interval):
 def watch(process_name, check_interval, run_once):
     """Monitor for a process.
 
-    This command watches for a specific process (default: TMetric).
+    This command watches for a specific process (default: TMetric Desktop).
     For automatic mouse movement when TMetric is running, use 'auto-keep-active'.
 
     Examples:
-        # Monitor and notify when TMetric is running
+        # Monitor and notify when TMetric Desktop is running
         tmetric-helper watch
 
-        # Check once if TMetric is running
+        # Check once if TMetric Desktop is running
         tmetric-helper watch --run-once
     """
     click.echo("=" * 60)
@@ -307,8 +307,11 @@ def watch(process_name, check_interval, run_once):
         for proc in psutil.process_iter(["name"]):
             try:
                 proc_name = proc.info["name"]
-                if proc_name and name_lower in proc_name.lower():
-                    return True
+                if proc_name:
+                    # Use exact match to avoid false positives
+                    # (e.g., "tmetric-helper" should not match "TMetric")
+                    if proc_name.lower() == name_lower or proc_name.lower() == f"{name_lower}.exe":
+                        return True
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 pass
         return False
@@ -344,8 +347,8 @@ def watch(process_name, check_interval, run_once):
 @click.option(
     "--process-name",
     "-p",
-    default="TMetric",
-    help="Process name to monitor (default: TMetric)",
+    default="TMetric Desktop",
+    help="Process name to monitor (default: TMetric Desktop)",
 )
 @click.option(
     "--inactivity-timeout",
@@ -374,11 +377,11 @@ def watch(process_name, check_interval, run_once):
 def auto_keep_active(
     process_name, inactivity_timeout, action, check_interval, process_check_interval
 ):
-    """Automatically keep system active when TMetric is running.
+    """Automatically keep system active when TMetric Desktop is running.
 
     This command combines process monitoring with keep-alive functionality.
-    It monitors for TMetric and only performs mouse movements when:
-    1. TMetric is running, AND
+    It monitors for TMetric Desktop and only performs mouse movements when:
+    1. TMetric Desktop is running, AND
     2. No user activity detected for the specified timeout
 
     Press Ctrl+C to stop monitoring.
@@ -402,8 +405,11 @@ def auto_keep_active(
         for proc in psutil.process_iter(["name"]):
             try:
                 proc_name = proc.info["name"]
-                if proc_name and name_lower in proc_name.lower():
-                    return True
+                if proc_name:
+                    # Use exact match to avoid false positives
+                    # (e.g., "tmetric-helper" should not match "TMetric")
+                    if proc_name.lower() == name_lower or proc_name.lower() == f"{name_lower}.exe":
+                        return True
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 pass
         return False
@@ -482,8 +488,8 @@ def auto_keep_active(
 @click.option(
     "--process-name",
     "-p",
-    default="TMetric",
-    help="Process name to check (default: TMetric)",
+    default="TMetric Desktop",
+    help="Process name to check (default: TMetric Desktop)",
 )
 def is_running(process_name):
     """Check if a process is currently running.
@@ -497,8 +503,11 @@ def is_running(process_name):
     for proc in psutil.process_iter(["pid", "name"]):
         try:
             proc_name = proc.info["name"]
-            if proc_name and name_lower in proc_name.lower():
-                running_processes.append((proc.info["pid"], proc_name))
+            if proc_name:
+                # Use exact match to avoid false positives
+                # (e.g., "tmetric-helper" should not match "TMetric")
+                if proc_name.lower() == name_lower or proc_name.lower() == f"{name_lower}.exe":
+                    running_processes.append((proc.info["pid"], proc_name))
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             pass
 
