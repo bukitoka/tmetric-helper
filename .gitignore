@@ -31,4 +31,7 @@ Thumbs.db
 
 # uv
 .uv/
-uv.lock
+
+# Logs
+*.log
+/tmp/

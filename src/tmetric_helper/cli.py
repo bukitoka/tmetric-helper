@@ -92,7 +92,8 @@ def check_work_hours_or_exit():
 @click.version_option()
 def cli():
     """TMetric Helper - Automate mouse movements and keyboard typing."""
-    pass
+    # Check work hours once at startup for all commands
+    check_work_hours_or_exit()
 
 
 @cli.command()
@@ -237,13 +238,8 @@ def keep_active(inactivity_timeout, action, check_interval):
     If no activity is detected for the specified timeout period, it will perform
     an action to simulate activity.
 
-    Exits gracefully if run outside work hours (weekdays 9 AM - 6 PM).
-
     Press Ctrl+C to stop monitoring.
     """
-    # Check work hours and exit if outside work hours
-    check_work_hours_or_exit()
-
     click.echo("=" * 60)
     click.echo("TMetric Helper - Keep Active Monitor")
     click.echo("=" * 60)
@@ -436,13 +432,8 @@ def auto_keep_active(
     1. TMetric Desktop is running, AND
     2. No user activity detected for the specified timeout
 
-    Exits gracefully if run outside work hours (weekdays 9 AM - 6 PM).
-
     Press Ctrl+C to stop monitoring.
     """
-    # Check work hours and exit if outside work hours
-    check_work_hours_or_exit()
-
     click.echo("=" * 60)
     click.echo("TMetric Helper - Auto Keep Active")
     click.echo("=" * 60)
