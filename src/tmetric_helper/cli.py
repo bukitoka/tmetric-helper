@@ -1,6 +1,7 @@
 """CLI module for TMetric Helper."""
 
 import subprocess
+import sys
 import time
 from datetime import datetime
 
@@ -39,6 +40,52 @@ def get_system_idle_time():
     except (subprocess.CalledProcessError, ValueError, IndexError):
         # Fallback to 0 if unable to get idle time
         return 0
+
+
+def is_work_hours():
+    """Check if current time is within work hours (9 AM - 6 PM on weekdays).
+
+    Returns True if it's a weekday (Monday-Friday) and time is between 9 AM and 6 PM.
+    Returns False otherwise (weekend or outside work hours).
+    """
+    now = datetime.now()
+    # weekday() returns 0-6 (Monday-Sunday)
+    is_weekday = now.weekday() < 5  # 0-4 are Monday-Friday
+    is_work_time = 9 <= now.hour < 18  # 9 AM to 6 PM (exclusive of 6 PM)
+
+    return is_weekday and is_work_time
+
+
+def check_work_hours_or_exit():
+    """Check if it's work hours and exit gracefully if not.
+
+    This function checks if today is a weekday and if the current time
+    is within work hours (9 AM - 6 PM). If not, it displays a message
+    and exits the program gracefully.
+    """
+    now = datetime.now()
+    day_name = now.strftime("%A")
+    current_time = now.strftime("%I:%M %p")
+
+    if not is_work_hours():
+        click.echo("=" * 60)
+        click.echo("⏸️  Outside Work Hours")
+        click.echo("=" * 60)
+        click.echo(f"Today: {day_name}")
+        click.echo(f"Current time: {current_time}")
+        click.echo("\nWork hours: Monday-Friday, 9:00 AM - 6:00 PM")
+
+        if now.weekday() >= 5:  # Weekend
+            click.echo("\n📅 It's the weekend! Time to relax.")
+        else:  # Weekday but outside work hours
+            if now.hour < 9:
+                click.echo("\n🌅 It's too early! Work starts at 9:00 AM.")
+            else:
+                click.echo("\n🌆 Work hours are over! They ended at 6:00 PM.")
+
+        click.echo("\nExiting gracefully...")
+        click.echo("=" * 60)
+        sys.exit(0)
 
 
 @click.group()
@@ -190,8 +237,13 @@ def keep_active(inactivity_timeout, action, check_interval):
     If no activity is detected for the specified timeout period, it will perform
     an action to simulate activity.
 
+    Exits gracefully if run outside work hours (weekdays 9 AM - 6 PM).
+
     Press Ctrl+C to stop monitoring.
     """
+    # Check work hours and exit if outside work hours
+    check_work_hours_or_exit()
+
     click.echo("=" * 60)
     click.echo("TMetric Helper - Keep Active Monitor")
     click.echo("=" * 60)
@@ -384,8 +436,13 @@ def auto_keep_active(
     1. TMetric Desktop is running, AND
     2. No user activity detected for the specified timeout
 
+    Exits gracefully if run outside work hours (weekdays 9 AM - 6 PM).
+
     Press Ctrl+C to stop monitoring.
     """
+    # Check work hours and exit if outside work hours
+    check_work_hours_or_exit()
+
     click.echo("=" * 60)
     click.echo("TMetric Helper - Auto Keep Active")
     click.echo("=" * 60)

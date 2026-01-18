@@ -93,6 +93,8 @@ tmetric-helper keep-active --check-interval 30
 
 The `keep-active` command runs continuously and monitors both mouse and keyboard activity. When no activity is detected for the specified timeout period (default: 5 minutes), it performs a subtle action to keep the system active. Press Ctrl+C to stop monitoring.
 
+**⏰ Work Hours Protection:** The `keep-active` and `auto-keep-active` commands automatically exit gracefully if run outside work hours (Monday-Friday, 9:00 AM - 6:00 PM). This prevents accidental automation during weekends or after-hours.
+
 ### Process Monitoring
 
 **Check if TMetric is running:**
@@ -136,8 +138,11 @@ tmetric-helper auto-keep-active --check-interval 15 --process-check-interval 60
 ```
 
 The `auto-keep-active` command combines process monitoring with activity simulation. It only performs mouse movements when:
-1. TMetric is detected running, AND
-2. No user activity for the specified timeout period
+1. It's within work hours (weekdays 9 AM - 6 PM), AND
+2. TMetric is detected running, AND
+3. No user activity for the specified timeout period
+
+**Note:** This command will exit gracefully with a friendly message if run on weekends or outside work hours.
 
 ### Advanced: Command Sequences
 
@@ -175,6 +180,32 @@ uv run ruff check --fix .
 
 - Python 3.14 or higher
 - macOS (uses PyAutoGUI which supports macOS, Windows, and Linux)
+
+## Work Hours Check
+
+Both `keep-active` and `auto-keep-active` commands include a work hours check that prevents them from running outside of business hours:
+
+- **Work Hours:** Monday-Friday, 9:00 AM - 6:00 PM
+- **Weekend:** Commands exit gracefully on Saturday and Sunday
+- **After Hours:** Commands exit gracefully before 9:00 AM or after 6:00 PM on weekdays
+
+**Example output when run outside work hours:**
+```
+============================================================
+⏸️  Outside Work Hours
+============================================================
+Today: Saturday
+Current time: 11:00 AM
+
+Work hours: Monday-Friday, 9:00 AM - 6:00 PM
+
+📅 It's the weekend! Time to relax.
+
+Exiting gracefully...
+============================================================
+```
+
+This ensures that automation only runs during typical business hours, preventing unnecessary activity tracking during personal time.
 
 ## Running in Background & Auto-Start on macOS
 
