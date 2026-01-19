@@ -1,19 +1,31 @@
 <!-- Use this file to provide workspace-specific custom instructions to Copilot. For more details, visit https://code.visualstudio.com/docs/copilot/copilot-customization#_use-a-githubcopilotinstructionsmd-file -->
 
-- [x] Verify that the copilot-instructions.md file in the .github directory is created.
+# TMetric Helper - Project Setup Complete
 
-- [x] Clarify Project Requirements - Python CLI for mouse movement and keyboard typing automation
+This is a manual-run Python CLI tool for mouse movement and keyboard typing automation on macOS.
 
-- [x] Scaffold the Project - Created project structure with uv and ruff configuration
+## Project Structure
 
-- [x] Customize the Project - Implemented CLI commands using click and pyautogui
+- **CLI Framework**: click
+- **Automation**: pyautogui
+- **Package Manager**: uv
+- **Linter/Formatter**: ruff
 
-- [x] Install Required Extensions - Not required
+## Key Features
 
-- [x] Compile the Project - Dependencies installed with uv sync, all checks passed
+- Manual execution (no automatic scheduling)
+- Mouse movement and click automation
+- Keyboard typing and key pressing
+- System activity monitoring
+- Keep-alive functionality to prevent system sleep
 
-- [x] Create and Run Task - Not required, CLI commands available
+## Usage
 
-- [x] Launch the Project - Use `uv run tmetric-helper --help` to see available commands
+Run commands manually using `uv run tmetric-helper [command]`
 
-- [x] Ensure Documentation is Complete - README.md created with usage examples
+## Notes
+
+- No work hours detection (runs anytime when invoked)
+- No launchd/background service (manual execution only)
+- No process monitoring (removed TMetric detection)
+- All commands available via CLI interface
