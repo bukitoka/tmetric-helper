@@ -1,6 +1,8 @@
 """CLI module for TMetric Helper."""
 
+import signal
 import subprocess
+import sys
 import time
 from datetime import datetime
 
@@ -190,6 +192,17 @@ def keep_active(inactivity_timeout, action, check_interval):
 
     Press Ctrl+C to stop monitoring.
     """
+    # Flag to track if we should continue running
+    running = {"active": True}
+    action_count_ref = {"count": 0}
+
+    def signal_handler(signum, frame):
+        """Handle Ctrl+C gracefully."""
+        running["active"] = False
+
+    # Register signal handler
+    signal.signal(signal.SIGINT, signal_handler)
+
     click.echo("=" * 60)
     click.echo("TMetric Helper - Keep Active Monitor")
     click.echo("=" * 60)
@@ -201,11 +214,12 @@ def keep_active(inactivity_timeout, action, check_interval):
     click.echo("Move mouse to a corner to trigger fail-safe abort.")
     click.echo("-" * 60)
 
-    action_count = 0
-
     try:
-        while True:
+        while running["active"]:
             time.sleep(check_interval)
+
+            if not running["active"]:
+                break
 
             # Get system idle time (includes both mouse and keyboard activity)
             idle_time = get_system_idle_time()
@@ -237,9 +251,11 @@ def keep_active(inactivity_timeout, action, check_interval):
                     # Press and release shift key (doesn't type anything)
                     pyautogui.press("shift")
 
-                action_count += 1
+                action_count_ref["count"] += 1
 
-                click.echo(f"[{timestamp}] ✓ Action completed (total actions: {action_count})")
+                click.echo(
+                    f"[{timestamp}] ✓ Action completed (total actions: {action_count_ref['count']})"
+                )
 
             else:
                 remaining = int(inactivity_timeout - idle_time)
@@ -250,9 +266,17 @@ def keep_active(inactivity_timeout, action, check_interval):
                 )
 
     except KeyboardInterrupt:
+        pass
+    except pyautogui.FailSafeException:
         click.echo("\n" + "-" * 60)
-        click.echo(f"✓ Monitoring stopped. Total actions performed: {action_count}")
+        click.echo("⚠️  Fail-safe triggered (mouse moved to corner)")
+    finally:
+        click.echo("\n" + "-" * 60)
+        click.echo(f"✓ Monitoring stopped. Total actions performed: {action_count_ref['count']}")
         click.echo("=" * 60)
+        # Give PyAutoGUI threads time to clean up
+        time.sleep(0.1)
+        sys.exit(0)
 
 
 if __name__ == "__main__":
